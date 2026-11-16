@@ -538,6 +538,29 @@ class LazyObjectImplementationTestCase(unittest.TestCase):
             LazyObject.__getattribute__.__code__.co_freevars,
         )
 
+    def test_multiple_inheritance_mro_cooperation(self):
+        """
+        LazyObject.__getattribute__ cooperates with mixins in multiple inheritance
+        via super() while still allowing access to wrapped-object attributes.
+        """
+
+        class AuditMixin:
+            def __getattribute__(self, name):
+                if name == "audit_log":
+                    return "logged"
+                return super().__getattribute__(name)
+
+        class ModelWithFoo:
+            foo = "bar"
+
+        class MultiLazy(LazyObject, AuditMixin):
+            def _setup(self):
+                self._wrapped = ModelWithFoo()
+
+        obj = MultiLazy()
+        self.assertEqual(obj.audit_log, "logged")
+        self.assertEqual(obj.foo, "bar")
+
     def test_lazyobject_tracing_import_subprocess(self):
         """
         LazyObject custom __class__ property must survive when imported under
